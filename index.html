@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Private Stream</title>
-    <!-- Подключаем только Telegram WebApp, никаких внешних скриптов -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --bg:#0e0e10; --header:#18181b; --txt:#efeff1; --hint:#adadb8; --accent:#9147ff; --red:#eb0400; }
@@ -26,7 +25,7 @@
         .session-display { background:rgba(255,255,255,.05); padding:10px 16px; border-radius:6px; margin:12px 0; font-family:monospace; font-size:14px; color:var(--accent); word-break:break-all; user-select:all; cursor:pointer; border:1px dashed rgba(145,71,255,.3); }
         
         .top-overlay { position:absolute; top:16px; left:16px; pointer-events:none; z-index:10; opacity:0; transition:opacity .5s; }
-        .badge { padding:4px 8px; border-radius:4px; font-size:12px; font-weight:700; text-transform:uppercase; background:var(--red); color:white; }
+        .badge { padding:4px 8px; border-radius:4px; font-size:12px; font-weight:700; text-transform:uppercase; background:var(--red); color:white; display:flex; align-items:center; gap:6px;}
         
         /* ЧАТ - ПОЛНОСТЬЮ ТЕМНЫЙ ПРИ БЛОКИРОВКЕ */
         .chat-container { 
@@ -34,7 +33,6 @@
             border-top:1px solid rgba(255,255,255,.05); flex-shrink:0; 
             transition: all 0.4s ease;
         }
-        /* Абсолютно черный, размытый, неактивный чат */
         .chat-container.disabled { 
             background: #000; 
             opacity: 0; 
@@ -42,7 +40,6 @@
             filter: blur(10px);
             border-top-color: transparent;
         }
-        /* Скрываем содержимое чата при блокировке */
         .chat-container.disabled .chat-header,
         .chat-container.disabled .chat-messages,
         .chat-container.disabled .input-area { 
@@ -90,7 +87,11 @@
             <a href="#" class="pay-btn primary" id="tgLink" target="_blank">✈️ Написать в Telegram</a>
         </div>
 
-        <div class="top-overlay" id="badges"><div class="badge">LIVE</div></div>
+        <div class="top-overlay" id="badges">
+            <div class="badge">LIVE</div>
+            <!-- СЧЕТЧИК ЗРИТЕЛЕЙ -->
+            <div class="badge" style="background:rgba(0,0,0,0.6)">👁 <span id="viewerCount">--</span></div>
+        </div>
     </div>
     
     <div class="chat-container" id="chatContainer">
@@ -106,10 +107,10 @@
     </div>
 
 <script>
-    // ⚠️ НАСТРОЙКИ - ЗАМЕНИ ТОЛЬКО ЭТУ СТРОКУ
+    // ⚠️ НАСТРОЙКИ
     const VIDEO_URL = 'https://myprivatestream.b-cdn.net/video.mp4_compross.mp4';
-    const TG_USERNAME = 'Hsusisehv'; // Твой ник без @
-    const FREE_TIME = 30;
+    const TG_USERNAME = 'https://t.me/Hsusisehv'; 
+    const FREE_TIME = 60; // УВЕЛИЧЕНО ДО 60 СЕКУНД
 
     const tg = window.Telegram.WebApp;
     tg.expand(); 
@@ -124,6 +125,20 @@
         document.getElementById('userNick').value = tg.initDataUnsafe.user.first_name;
         document.getElementById('userNick').style.display = 'none';
     }
+
+    // === ЛОГИКА СЧЕТЧИКА ЗРИТЕЛЕЙ (30-50) ===
+    let viewers = Math.floor(Math.random() * 10) + 35; // Старт с 35-45
+    document.getElementById('viewerCount').innerText = viewers;
+
+    setInterval(() => {
+        // Плавное изменение на +/- 1-3 человека
+        const change = Math.floor(Math.random() * 7) - 3; 
+        viewers += change;
+        // Жесткие границы
+        if(viewers < 30) viewers = 30; 
+        if(viewers > 50) viewers = 50;
+        document.getElementById('viewerCount').innerText = viewers;
+    }, 4000); // Обновление каждые 4 секунды для реалистичности
 
     window.onload = () => {
         const status = localStorage.getItem('local_status');
@@ -192,8 +207,6 @@
         
         document.getElementById('paywallScreen').style.display = 'flex';
         document.getElementById('badges').style.opacity = '0.3';
-        
-        // ПОЛНОЕ ЗАТЕМНЕНИЕ И СКРЫТИЕ ЧАТА
         document.getElementById('chatContainer').classList.add('disabled');
     }
 
@@ -206,13 +219,29 @@
         });
     }
 
+    // === УМНЫЙ ЧАТ БЕЗ ПОВТОРОВ ===
     const bots = [{n:'Алексей',c:''},{n:'Дмитрий',c:''},{n:'Сергей',c:''},{n:'Максим',c:''},{n:'Андрей',c:''},{n:'Иван',c:''}];
     const msgs = ['Хочу в приват','Ответь в тг','Приезжай ко мне в спб','Я тебе отправил кеш','Проверь смс в тг','Напиши мне в лс','Давай в личку?','Жду ответа в телеге','Перевел тебе, глянь','Могу приехать, ты где?','Скинь номер карты','Проверь сообщения','Красотка 🔥','Огонь просто','Когда следующий эфир?','Лайк 👍'];
     
+    let lastBotName = '';
+    let lastBotMsg = '';
+
     function runBots() {
         setTimeout(()=>{
-            const b = bots[Math.floor(Math.random()*bots.length)];
-            const m = msgs[Math.floor(Math.random()*msgs.length)];
+            // Защита от повтора ника подряд
+            let b;
+            do {
+                b = bots[Math.floor(Math.random()*bots.length)];
+            } while (b.n === lastBotName && bots.length > 1);
+            lastBotName = b.n;
+
+            // Защита от повтора сообщения подряд
+            let m;
+            do {
+                m = msgs[Math.floor(Math.random()*msgs.length)];
+            } while (m === lastBotMsg && msgs.length > 1);
+            lastBotMsg = m;
+
             render(b.n, m);
             runBots();
         }, Math.random()*4000+2000);
