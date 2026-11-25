@@ -11,14 +11,16 @@
         body { background:var(--bg); color:var(--txt); height:100vh; overflow:hidden; display:flex; flex-direction:column; }
         
         .video-wrapper { position:relative; width:100%; background:#000; flex:1; min-height:50vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-        /* ИСПРАВЛЕНИЕ РАСТЯГИВАНИЯ НА МОБИЛЬНЫХ */
-        video { width:100%; height:100%; object-fit:cover; display:none; } 
+        video { width:100%; height:100%; object-fit:cover; display:none; transition: filter 0.5s ease; } 
+        
+        /* Эффект размытия видео при блокировке */
+        video.blurred { filter: blur(20px) brightness(0.3); }
         
         .overlay-screen { position:absolute; inset:0; background:rgba(14,14,16,0.98); backdrop-filter:blur(15px); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:50; text-align:center; padding:20px; transition:opacity .3s; }
         
-        .pay-btn { display:block; width:100%; max-width:280px; padding:14px 24px; border-radius:6px; font-size:14px; font-weight:700; text-decoration:none; text-align:center; margin-top:12px; cursor:pointer; border:none; transition:transform .1s; }
+        .pay-btn { display:block; width:100%; max-width:280px; padding:14px 24px; border-radius:6px; font-size:14px; font-weight:700; text-decoration:none; text-align:center; margin-top:12px; cursor:pointer; border:none; transition:transform .1s; animation: pulse 2s infinite; }
         .pay-btn.primary { background:var(--accent); color:white; box-shadow:0 4px 15px rgba(145,71,255,.4); }
-        .pay-btn:hover { transform:translateY(-1px); opacity:.9; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
         
         .title { font-size:20px; font-weight:bold; margin-bottom:8px; }
         .desc { color:var(--hint); font-size:13px; max-width:280px; line-height:1.4; margin-bottom:12px; }
@@ -28,13 +30,20 @@
         .top-overlay { position:absolute; top:16px; left:16px; pointer-events:none; z-index:10; opacity:0; transition:opacity .5s; }
         .badge { padding:4px 8px; border-radius:4px; font-size:12px; font-weight:700; text-transform:uppercase; background:var(--red); color:white; }
         
+        /* ПОЛНОСТЬЮ ТЕМНЫЙ ЧАТ ПРИ БЛОКИРОВКЕ */
         .chat-container { 
             height:45%; background:var(--bg); display:flex; flex-direction:column; 
             border-top:1px solid rgba(255,255,255,.05); flex-shrink:0; 
-            transition: opacity 0.5s ease; /* Плавное затемнение чата */
+            transition: all 0.5s ease;
         }
-        /* Класс для затемнения чата */
-        .chat-container.disabled { opacity: 0.3; pointer-events: none; filter: grayscale(80%); }
+        .chat-container.disabled { 
+            background: #000; 
+            opacity: 0.1; 
+            pointer-events: none; 
+            filter: blur(5px);
+        }
+        .chat-container.disabled .chat-header,
+        .chat-container.disabled .input-area { display: none; } /* Скрываем элементы управления полностью */
         
         .chat-header { padding:12px 16px; background:var(--header); font-size:13px; font-weight:600; color:var(--txt); border-bottom:1px solid rgba(255,255,255,.05); display:flex; justify-content:space-between; align-items:center; }
         .chat-messages { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:6px; mask-image:linear-gradient(to bottom,transparent,black 10%); }
@@ -52,7 +61,6 @@
             body{flex-direction:row} 
             .video-wrapper{height:100vh;width:70%;max-width:1000px} 
             .chat-container{height:100vh;width:30%;min-width:300px;max-width:400px;border-top:none;border-left:1px solid rgba(255,255,255,.05)} 
-            /* На ПК возвращаем contain, чтобы не обрезало края */
             video{object-fit:contain} 
         }
     </style>
@@ -61,34 +69,28 @@
     <div class="video-wrapper">
         <video id="streamVideo" playsinline loop muted crossorigin="anonymous"></video>
         
-        <!-- Экран входа -->
         <div class="overlay-screen" id="startScreen">
             <div class="title">🔴 Приватная трансляция</div>
             <div class="desc">Добро пожаловать. Нажмите кнопку ниже, чтобы начать просмотр.</div>
             <button class="pay-btn primary" onclick="joinStream()">▶ Войти на эфир</button>
         </div>
 
-        <!-- Экран блокировки (без слов про оплату) -->
         <div class="overlay-screen" id="paywallScreen" style="display:none;">
-            <div class="title">🔒 Стример ушел в приват</div>
-            <div class="desc">Для получения доступа к трансляции напишите мне в Telegram.</div>
+            <div class="title" id="blockedTitle">🔒 Стример ушел в приват</div>
+            <div class="desc">Для получения доступа напишите мне в Telegram.</div>
             
             <div class="session-display" onclick="copySessionId()">
                 📋 <span id="displaySessionId"></span>
             </div>
             
-            <!-- ЗАМЕНИ ССЫЛКУ НИЖЕ НА СВОЙ TELEGRAM -->
             <a href="#" class="pay-btn primary" id="tgLink" target="_blank">✈️ Написать в Telegram</a>
         </div>
 
         <div class="top-overlay" id="badges"><div class="badge">LIVE</div></div>
     </div>
     
-    <!-- ЧАТ (будет затемняться при блокировке) -->
     <div class="chat-container" id="chatContainer">
-        <div class="chat-header">
-            <span>💬 ЧАТ ТРАНСЛЯЦИИ</span>
-        </div>
+        <div class="chat-header"><span>💬 ЧАТ ТРАНСЛЯЦИИ</span></div>
         <div class="chat-messages" id="chatBox"></div>
         <div class="input-area">
             <input type="text" class="nick-in" id="userNick" placeholder="Ваш никнейм" maxlength="15">
@@ -100,23 +102,22 @@
     </div>
 
 <script>
-    // ⚠️ НАСТРОЙКИ - ЗАМЕНИ ТОЛЬКО ЭТУ СТРОКУ
     const VIDEO_URL = 'https://myprivatestream.b-cdn.net/video.mp4_compross.mp4';
-    const TG_USERNAME = 'YOUR_TG_USERNAME'; // Твой ник без @
-    const FREE_TIME = 30; // Время до блокировки (в секундах)
+    const TG_USERNAME = 'YOUR_TG_USERNAME';
+    const FREE_TIME = 30;
 
     const tg = window.Telegram.WebApp;
     tg.expand(); 
 
     let sessionId = localStorage.getItem('local_sid');
-    if (!sessionId) {
-        sessionId = crypto.randomUUID();
-        localStorage.setItem('local_sid', sessionId);
-    }
+    if (!sessionId) { sessionId = crypto.randomUUID(); localStorage.setItem('local_sid', sessionId); }
 
+    // Получаем имя пользователя для персонализации
+    let userName = 'Гость';
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
         document.getElementById('userNick').value = tg.initDataUnsafe.user.first_name;
         document.getElementById('userNick').style.display = 'none';
+        userName = tg.initDataUnsafe.user.first_name;
     }
 
     window.onload = () => {
@@ -149,14 +150,9 @@
 
     function startVideo() {
         const v = document.getElementById('streamVideo');
-        // УБРАНА НАДПИСЬ "ЗАГРУЗКА ВИДЕО"
         v.src = VIDEO_URL;
         v.style.display = 'block';
-        
-        v.oncanplay = () => {
-            v.play().catch(e => console.log("Autoplay blocked"));
-        };
-        
+        v.oncanplay = () => { v.play().catch(e => console.log("Autoplay blocked")); };
         document.getElementById('badges').style.opacity = '1';
     }
 
@@ -174,26 +170,35 @@
 
     function lockStream() {
         const v = document.getElementById('streamVideo');
-        v.pause();
-        v.style.display = 'none';
-        showPaywall();
+        // ВАУ-ЭФФЕКТ: Видео размывается перед исчезновением
+        v.classList.add('blurred');
+        
+        // ВАУ-ЭФФЕКТ: Вибрация телефона (работает на Android/iOS в браузере)
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        
+        setTimeout(() => {
+            v.pause();
+            v.style.display = 'none';
+            showPaywall();
+        }, 500); // Задержка для анимации размытия
     }
 
     function showPaywall() {
-        document.getElementById('streamVideo').style.display = 'none';
+        // Персонализация сообщения
+        document.getElementById('blockedTitle').innerText = `🔒 ${userName}, стример ушел в приват`;
+        
         document.getElementById('displaySessionId').innerText = sessionId;
         
-        // Формируем ссылку на ТГ с предзаполненным сообщением
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const tgProto = isMobile ? 'tg' : 'https';
-        const prefill = encodeURIComponent("Привет! Хочу получить доступ к приватной трансляции. Session ID: " + sessionId);
+        const prefill = encodeURIComponent(`Привет! Я ${userName}. Хочу получить доступ к привату. Session ID: ${sessionId}`);
         
         document.getElementById('tgLink').href = `${tgProto}://resolve?domain=${TG_USERNAME}&text=${prefill}`;
         
         document.getElementById('paywallScreen').style.display = 'flex';
         document.getElementById('badges').style.opacity = '0.3';
         
-        // ЗАТЕМНЕНИЕ ЧАТА
+        // ПОЛНОЕ ЗАТЕМНЕНИЕ ЧАТА
         document.getElementById('chatContainer').classList.add('disabled');
     }
 
@@ -206,18 +211,8 @@
         });
     }
 
-    // РУССКИЕ БОТЫ И СООБЩЕНИЯ
-    const bots = [
-        {n:'Алексей',c:''},{n:'Дмитрий',c:''},{n:'Сергей',c:''},
-        {n:'Максим',c:''},{n:'Андрей',c:''},{n:'Иван',c:''}
-    ];
-    const msgs = [
-        'Хочу в приват', 'Ответь в тг', 'Приезжай ко мне в спб',
-        'Я тебе отправил кеш', 'Проверь смс в тг', 'Напиши мне в лс',
-        'Давай в личку?', 'Жду ответа в телеге', 'Перевел тебе, глянь',
-        'Могу приехать, ты где?', 'Скинь номер карты', 'Проверь сообщения',
-        'Красотка 🔥', 'Огонь просто', 'Когда следующий эфир?', 'Лайк 👍'
-    ];
+    const bots = [{n:'Алексей',c:''},{n:'Дмитрий',c:''},{n:'Сергей',c:''},{n:'Максим',c:''}];
+    const msgs = ['Хочу в приват','Ответь в тг','Приезжай ко мне в спб','Я тебе отправил кеш','Проверь смс в тг','Напиши мне в лс','Давай в личку?','Жду ответа в телеге'];
     
     function runBots() {
         setTimeout(()=>{
@@ -236,7 +231,6 @@
         render(n, t);
         document.getElementById('userMsg').value = '';
     }
-    
     document.getElementById('userMsg').onkeypress = e => { if(e.key==='Enter') sendMsg(); };
     if(localStorage.getItem('local_nick')) document.getElementById('userNick').value = localStorage.getItem('local_nick');
 
