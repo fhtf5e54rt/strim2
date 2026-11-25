@@ -11,13 +11,13 @@
         body { background:var(--bg); color:var(--txt); height:100vh; overflow:hidden; display:flex; flex-direction:column; }
         
         .video-wrapper { position:relative; width:100%; background:#000; flex:1; min-height:50vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-        video { width:100%; height:100%; object-fit:fill; display:none; } 
+        /* ИСПРАВЛЕНИЕ РАСТЯГИВАНИЯ НА МОБИЛЬНЫХ */
+        video { width:100%; height:100%; object-fit:cover; display:none; } 
         
         .overlay-screen { position:absolute; inset:0; background:rgba(14,14,16,0.98); backdrop-filter:blur(15px); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:50; text-align:center; padding:20px; transition:opacity .3s; }
         
         .pay-btn { display:block; width:100%; max-width:280px; padding:14px 24px; border-radius:6px; font-size:14px; font-weight:700; text-decoration:none; text-align:center; margin-top:12px; cursor:pointer; border:none; transition:transform .1s; }
         .pay-btn.primary { background:var(--accent); color:white; box-shadow:0 4px 15px rgba(145,71,255,.4); }
-        .pay-btn.secondary { background:transparent; color:var(--hint); border:1px solid rgba(255,255,255,.15); font-weight:600; font-size:13px; margin-top:8px; }
         .pay-btn:hover { transform:translateY(-1px); opacity:.9; }
         
         .title { font-size:20px; font-weight:bold; margin-bottom:8px; }
@@ -28,7 +28,14 @@
         .top-overlay { position:absolute; top:16px; left:16px; pointer-events:none; z-index:10; opacity:0; transition:opacity .5s; }
         .badge { padding:4px 8px; border-radius:4px; font-size:12px; font-weight:700; text-transform:uppercase; background:var(--red); color:white; }
         
-        .chat-container { height:45%; background:var(--bg); display:flex; flex-direction:column; border-top:1px solid rgba(255,255,255,.05); flex-shrink:0; }
+        .chat-container { 
+            height:45%; background:var(--bg); display:flex; flex-direction:column; 
+            border-top:1px solid rgba(255,255,255,.05); flex-shrink:0; 
+            transition: opacity 0.5s ease; /* Плавное затемнение чата */
+        }
+        /* Класс для затемнения чата */
+        .chat-container.disabled { opacity: 0.3; pointer-events: none; filter: grayscale(80%); }
+        
         .chat-header { padding:12px 16px; background:var(--header); font-size:13px; font-weight:600; color:var(--txt); border-bottom:1px solid rgba(255,255,255,.05); display:flex; justify-content:space-between; align-items:center; }
         .chat-messages { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:6px; mask-image:linear-gradient(to bottom,transparent,black 10%); }
         .msg { font-size:13px; line-height:1.4; word-wrap:break-word; animation:fadeIn .3s ease; }
@@ -41,12 +48,11 @@
         .nick-in { width:100%; background:transparent; border:none; color:var(--hint); font-size:12px; border-bottom:1px solid rgba(255,255,255,.05); padding:4px 12px; }
         .send-btn { background:var(--accent); color:white; border:none; width:32px; height:32px; border-radius:4px; cursor:pointer; font-weight:bold; }
         
-        .error-msg { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(235,4,0,0.9); color:white; padding:8px 16px; border-radius:4px; font-size:12px; display:none; z-index:100; text-align:center; }
-        
         @media(min-width:768px){ 
             body{flex-direction:row} 
             .video-wrapper{height:100vh;width:70%;max-width:1000px} 
             .chat-container{height:100vh;width:30%;min-width:300px;max-width:400px;border-top:none;border-left:1px solid rgba(255,255,255,.05)} 
+            /* На ПК возвращаем contain, чтобы не обрезало края */
             video{object-fit:contain} 
         }
     </style>
@@ -55,33 +61,33 @@
     <div class="video-wrapper">
         <video id="streamVideo" playsinline loop muted crossorigin="anonymous"></video>
         
+        <!-- Экран входа -->
         <div class="overlay-screen" id="startScreen">
             <div class="title">🔴 Приватная трансляция</div>
-            <div class="desc">Добро пожаловать! У вас есть 30 секунд бесплатного просмотра.</div>
+            <div class="desc">Добро пожаловать. Нажмите кнопку ниже, чтобы начать просмотр.</div>
             <button class="pay-btn primary" onclick="joinStream()">▶ Войти на эфир</button>
         </div>
 
+        <!-- Экран блокировки (без слов про оплату) -->
         <div class="overlay-screen" id="paywallScreen" style="display:none;">
             <div class="title">🔒 Стример ушел в приват</div>
-            <div class="desc">Бесплатное время вышло. Оплатите доступ или напишите мне в Telegram для продолжения.</div>
+            <div class="desc">Для получения доступа к трансляции напишите мне в Telegram.</div>
             
             <div class="session-display" onclick="copySessionId()">
                 📋 <span id="displaySessionId"></span>
             </div>
             
-            <!-- ЗАМЕНИ ССЫЛКИ НИЖЕ НА СВОИ -->
-            <a href="#" class="pay-btn primary" id="payLink" target="_blank">💎 Оплатить доступ (400₽)</a>
-            <a href="#" class="pay-btn secondary" id="tgLink" target="_blank">✈️ Написать в Telegram</a>
+            <!-- ЗАМЕНИ ССЫЛКУ НИЖЕ НА СВОЙ TELEGRAM -->
+            <a href="#" class="pay-btn primary" id="tgLink" target="_blank">✈️ Написать в Telegram</a>
         </div>
 
         <div class="top-overlay" id="badges"><div class="badge">LIVE</div></div>
-        <div class="error-msg" id="errorMsg"></div>
     </div>
     
-    <div class="chat-container">
+    <!-- ЧАТ (будет затемняться при блокировке) -->
+    <div class="chat-container" id="chatContainer">
         <div class="chat-header">
             <span>💬 ЧАТ ТРАНСЛЯЦИИ</span>
-            <!-- ТАЙМЕР УБРАН ОТСЮДА -->
         </div>
         <div class="chat-messages" id="chatBox"></div>
         <div class="input-area">
@@ -94,11 +100,10 @@
     </div>
 
 <script>
-    // ⚠️ НАСТРОЙКИ - ЗАМЕНИ ТОЛЬКО ЭТИ 2 СТРОКИ
+    // ⚠️ НАСТРОЙКИ - ЗАМЕНИ ТОЛЬКО ЭТУ СТРОКУ
     const VIDEO_URL = 'https://myprivatestream.b-cdn.net/video.mp4_compross.mp4';
     const TG_USERNAME = 'YOUR_TG_USERNAME'; // Твой ник без @
-    const DA_LINK = 'https://donationalerts.com/r/YOUR_LINK'; // Твоя ссылка на оплату
-    const FREE_TIME = 30;
+    const FREE_TIME = 30; // Время до блокировки (в секундах)
 
     const tg = window.Telegram.WebApp;
     tg.expand(); 
@@ -144,36 +149,18 @@
 
     function startVideo() {
         const v = document.getElementById('streamVideo');
-        const errorMsg = document.getElementById('errorMsg');
-        
-        console.log('Loading video...');
-        errorMsg.innerText = '⏳ Загрузка видео...';
-        errorMsg.style.display = 'block';
-
+        // УБРАНА НАДПИСЬ "ЗАГРУЗКА ВИДЕО"
         v.src = VIDEO_URL;
         v.style.display = 'block';
         
         v.oncanplay = () => {
-            console.log('Video loaded!');
-            errorMsg.style.display = 'none';
-            v.play().catch(e => {
-                console.error('Autoplay blocked:', e);
-                errorMsg.innerText = '⚠️ Нажмите на видео для запуска';
-                errorMsg.style.display = 'block';
-            });
-        };
-        
-        v.onerror = (e) => {
-            console.error('Video error:', e);
-            errorMsg.innerText = '❌ Ошибка загрузки видео';
-            errorMsg.style.display = 'block';
+            v.play().catch(e => console.log("Autoplay blocked"));
         };
         
         document.getElementById('badges').style.opacity = '1';
     }
 
     function startTimer(sec) {
-        // ТАЙМЕР РАБОТАЕТ В ФОНЕ, НО НЕ ОТОБРАЖАЕТСЯ
         let s = sec;
         const int = setInterval(() => {
             s--; 
@@ -196,15 +183,18 @@
         document.getElementById('streamVideo').style.display = 'none';
         document.getElementById('displaySessionId').innerText = sessionId;
         
+        // Формируем ссылку на ТГ с предзаполненным сообщением
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const tgProto = isMobile ? 'tg' : 'https';
-        const prefill = encodeURIComponent("Привет! Я оплатил доступ. Session ID: " + sessionId);
+        const prefill = encodeURIComponent("Привет! Хочу получить доступ к приватной трансляции. Session ID: " + sessionId);
         
-        document.getElementById('payLink').href = `${DA_LINK}?metadata[sid]=${sessionId}`;
         document.getElementById('tgLink').href = `${tgProto}://resolve?domain=${TG_USERNAME}&text=${prefill}`;
         
         document.getElementById('paywallScreen').style.display = 'flex';
         document.getElementById('badges').style.opacity = '0.3';
+        
+        // ЗАТЕМНЕНИЕ ЧАТА
+        document.getElementById('chatContainer').classList.add('disabled');
     }
 
     function copySessionId() {
