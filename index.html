@@ -53,26 +53,25 @@
 </head>
 <body>
     <div class="video-wrapper">
-        <!-- ТВОЯ ССЫЛКА НА BUNNY.NET УЖЕ ВСТАВЛЕНА -->
         <video id="streamVideo" playsinline loop muted crossorigin="anonymous"></video>
         
         <div class="overlay-screen" id="startScreen">
-            <div class="title">🔴 Private Stream</div>
-            <div class="desc">Welcome! You have 30 seconds of free preview.</div>
-            <button class="pay-btn primary" onclick="joinStream()">▶ Join Stream</button>
+            <div class="title">🔴 Приватная трансляция</div>
+            <div class="desc">Добро пожаловать! У вас есть 30 секунд бесплатного просмотра.</div>
+            <button class="pay-btn primary" onclick="joinStream()">▶ Войти на эфир</button>
         </div>
 
         <div class="overlay-screen" id="paywallScreen" style="display:none;">
-            <div class="title">🔒 Private Access Required</div>
-            <div class="desc">Free preview ended. Pay below or send this ID to my Telegram to continue.</div>
+            <div class="title">🔒 Стример ушел в приват</div>
+            <div class="desc">Бесплатное время вышло. Оплатите доступ или напишите мне в Telegram для продолжения.</div>
             
             <div class="session-display" onclick="copySessionId()">
                 📋 <span id="displaySessionId"></span>
             </div>
             
             <!-- ЗАМЕНИ ССЫЛКИ НИЖЕ НА СВОИ -->
-            <a href="#" class="pay-btn primary" id="payLink" target="_blank">💎 Pay 400₽</a>
-            <a href="#" class="pay-btn secondary" id="tgLink" target="_blank">✈️ Open Telegram Chat</a>
+            <a href="#" class="pay-btn primary" id="payLink" target="_blank">💎 Оплатить доступ (400₽)</a>
+            <a href="#" class="pay-btn secondary" id="tgLink" target="_blank">✈️ Написать в Telegram</a>
         </div>
 
         <div class="top-overlay" id="badges"><div class="badge">LIVE</div></div>
@@ -81,14 +80,14 @@
     
     <div class="chat-container">
         <div class="chat-header">
-            <span>💬 CHAT</span>
-            <span id="timerDisplay" style="font-size:11px;color:var(--hint);"></span>
+            <span>💬 ЧАТ ТРАНСЛЯЦИИ</span>
+            <!-- ТАЙМЕР УБРАН ОТСЮДА -->
         </div>
         <div class="chat-messages" id="chatBox"></div>
         <div class="input-area">
-            <input type="text" class="nick-in" id="userNick" placeholder="Your nickname" maxlength="15">
+            <input type="text" class="nick-in" id="userNick" placeholder="Ваш никнейм" maxlength="15">
             <div class="row">
-                <input type="text" style="flex:1" id="userMsg" placeholder="Send a message..." maxlength="100">
+                <input type="text" style="flex:1" id="userMsg" placeholder="Написать сообщение..." maxlength="100">
                 <button class="send-btn" onclick="sendMsg()">➤</button>
             </div>
         </div>
@@ -147,26 +146,26 @@
         const v = document.getElementById('streamVideo');
         const errorMsg = document.getElementById('errorMsg');
         
-        console.log('Loading video from Bunny.net...');
-        errorMsg.innerText = '⏳ Loading video...';
+        console.log('Loading video...');
+        errorMsg.innerText = '⏳ Загрузка видео...';
         errorMsg.style.display = 'block';
 
         v.src = VIDEO_URL;
         v.style.display = 'block';
         
         v.oncanplay = () => {
-            console.log('Video loaded successfully!');
+            console.log('Video loaded!');
             errorMsg.style.display = 'none';
             v.play().catch(e => {
                 console.error('Autoplay blocked:', e);
-                errorMsg.innerText = '⚠️ Click video to play';
+                errorMsg.innerText = '⚠️ Нажмите на видео для запуска';
                 errorMsg.style.display = 'block';
             });
         };
         
         v.onerror = (e) => {
-            console.error('Video load error:', e);
-            errorMsg.innerText = '❌ Video failed. Check link in code.';
+            console.error('Video error:', e);
+            errorMsg.innerText = '❌ Ошибка загрузки видео';
             errorMsg.style.display = 'block';
         };
         
@@ -174,14 +173,12 @@
     }
 
     function startTimer(sec) {
+        // ТАЙМЕР РАБОТАЕТ В ФОНЕ, НО НЕ ОТОБРАЖАЕТСЯ
         let s = sec;
-        const el = document.getElementById('timerDisplay');
         const int = setInterval(() => {
             s--; 
-            el.innerText = `${s}s left`;
             if(s <= 0) { 
                 clearInterval(int); 
-                el.innerText = ''; 
                 localStorage.setItem('local_status', 'blocked');
                 lockStream(); 
             }
@@ -214,13 +211,23 @@
         navigator.clipboard.writeText(sessionId).then(() => {
             const el = document.getElementById('displaySessionId');
             const orig = el.innerText; 
-            el.innerText = "Copied!";
+            el.innerText = "Скопировано!";
             setTimeout(() => el.innerText = orig, 1500);
         });
     }
 
-    const bots = [{n:'Alex',c:''},{n:'Dmitry',c:''},{n:'Sergey',c:''},{n:'Max',c:''}];
-    const msgs = ['Write to TG','Check DM','Come to SPB','Sent cash','Check SMS','Nice content','How much?'];
+    // РУССКИЕ БОТЫ И СООБЩЕНИЯ
+    const bots = [
+        {n:'Алексей',c:''},{n:'Дмитрий',c:''},{n:'Сергей',c:''},
+        {n:'Максим',c:''},{n:'Андрей',c:''},{n:'Иван',c:''}
+    ];
+    const msgs = [
+        'Хочу в приват', 'Ответь в тг', 'Приезжай ко мне в спб',
+        'Я тебе отправил кеш', 'Проверь смс в тг', 'Напиши мне в лс',
+        'Давай в личку?', 'Жду ответа в телеге', 'Перевел тебе, глянь',
+        'Могу приехать, ты где?', 'Скинь номер карты', 'Проверь сообщения',
+        'Красотка 🔥', 'Огонь просто', 'Когда следующий эфир?', 'Лайк 👍'
+    ];
     
     function runBots() {
         setTimeout(()=>{
@@ -232,7 +239,7 @@
     }
 
     function sendMsg() {
-        const n = document.getElementById('userNick').value.trim() || 'Anon';
+        const n = document.getElementById('userNick').value.trim() || 'Аноним';
         const t = document.getElementById('userMsg').value.trim();
         if(!t) return;
         localStorage.setItem('local_nick', n);
