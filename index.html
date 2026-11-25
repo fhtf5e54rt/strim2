@@ -51,7 +51,7 @@
 </head>
 <body>
     <div class="video-wrapper">
-        <!-- ЗАМЕНИ ССЫЛКУ НИЖЕ НА СВОЙ MP4 -->
+        <!-- ССЫЛКА НА ТВОЕ ВИДЕО С GITHUB -->
         <video id="streamVideo" playsinline loop muted></video>
         
         <div class="overlay-screen" id="startScreen">
@@ -68,7 +68,7 @@
                 📋 <span id="displaySessionId"></span>
             </div>
             
-            <!-- ЗАМЕНИ ССЫЛКИ НИЖЕ -->
+            <!-- ЗАМЕНИ ССЫЛКИ НИЖЕ НА СВОИ -->
             <a href="#" class="pay-btn primary" id="payLink" target="_blank">💎 Pay 400₽</a>
             <a href="#" class="pay-btn secondary" id="tgLink" target="_blank">✈️ Open Telegram Chat</a>
         </div>
@@ -92,29 +92,26 @@
     </div>
 
 <script>
-    // ⚠️ НАСТРОЙКИ - ЗАМЕНИ НА СВОИ ДАННЫЕ
-    const VIDEO_URL = 'https://fhtf5e54rt.github.io/strim/demo.mp4'; // Твоя ссылка на видео
+    // ⚠️ НАСТРОЙКИ - ЗАМЕНИ ТОЛЬКО ЭТИ 2 СТРОКИ
+    const VIDEO_URL = 'https://raw.githubusercontent.com/fhtf5e54rt/strim2/main/video.mp4_compress.mp4';
     const TG_USERNAME = 'YOUR_TG_USERNAME'; // Твой ник без @
     const DA_LINK = 'https://donationalerts.com/r/YOUR_LINK'; // Твоя ссылка на оплату
-    const FREE_TIME = 30; // Секунды бесплатного просмотра
+    const FREE_TIME = 30;
 
     const tg = window.Telegram.WebApp;
     tg.expand(); 
 
-    // Генерация или получение Session ID
     let sessionId = localStorage.getItem('local_sid');
     if (!sessionId) {
         sessionId = crypto.randomUUID();
         localStorage.setItem('local_sid', sessionId);
     }
 
-    // Автоподстановка ника из Telegram
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
         document.getElementById('userNick').value = tg.initDataUnsafe.user.first_name;
         document.getElementById('userNick').style.display = 'none';
     }
 
-    // Проверка статуса при загрузке
     window.onload = () => {
         const status = localStorage.getItem('local_status');
         const startTime = localStorage.getItem('local_start_time');
@@ -122,7 +119,6 @@
         if (status === 'blocked') {
             showPaywall();
         } else if (startTime) {
-            // Если уже_started, но не blocked - проверяем, не истекло ли время пока вкладка была закрыта
             const elapsed = Math.floor((Date.now() - parseInt(startTime)) / 1000);
             if (elapsed >= FREE_TIME) {
                 localStorage.setItem('local_status', 'blocked');
@@ -178,7 +174,6 @@
         document.getElementById('streamVideo').style.display = 'none';
         document.getElementById('displaySessionId').innerText = sessionId;
         
-        // Формируем ссылки
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         const tgProto = isMobile ? 'tg' : 'https';
         const prefill = encodeURIComponent("Привет! Я оплатил доступ. Session ID: " + sessionId);
@@ -199,7 +194,6 @@
         });
     }
 
-    // Боты для чата
     const bots = [{n:'Alex',c:''},{n:'Dmitry',c:''},{n:'Sergey',c:''},{n:'Max',c:''}];
     const msgs = ['Write to TG','Check DM','Come to SPB','Sent cash','Check SMS','Nice content','How much?'];
     
