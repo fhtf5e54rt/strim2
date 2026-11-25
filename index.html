@@ -41,6 +41,8 @@
         .nick-in { width:100%; background:transparent; border:none; color:var(--hint); font-size:12px; border-bottom:1px solid rgba(255,255,255,.05); padding:4px 12px; }
         .send-btn { background:var(--accent); color:white; border:none; width:32px; height:32px; border-radius:4px; cursor:pointer; font-weight:bold; }
         
+        .error-msg { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(235,4,0,0.9); color:white; padding:8px 16px; border-radius:4px; font-size:12px; display:none; z-index:100; text-align:center; }
+        
         @media(min-width:768px){ 
             body{flex-direction:row} 
             .video-wrapper{height:100vh;width:70%;max-width:1000px} 
@@ -51,8 +53,7 @@
 </head>
 <body>
     <div class="video-wrapper">
-        <!-- ССЫЛКА НА ТВОЕ ВИДЕО С GITHUB -->
-        <video id="streamVideo" playsinline loop muted></video>
+        <video id="streamVideo" playsinline loop muted crossorigin="anonymous"></video>
         
         <div class="overlay-screen" id="startScreen">
             <div class="title">🔴 Private Stream</div>
@@ -74,6 +75,7 @@
         </div>
 
         <div class="top-overlay" id="badges"><div class="badge">LIVE</div></div>
+        <div class="error-msg" id="errorMsg"></div>
     </div>
     
     <div class="chat-container">
@@ -93,7 +95,7 @@
 
 <script>
     // ⚠️ НАСТРОЙКИ - ЗАМЕНИ ТОЛЬКО ЭТИ 2 СТРОКИ
-    const VIDEO_URL = 'https://raw.githubusercontent.com/fhtf5e54rt/strim2/main/video.mp4_compress.mp4';
+    const STREAMABLE_URL = 'https://streamable.com/87u3uk?t=40';
     const TG_USERNAME = 'YOUR_TG_USERNAME'; // Твой ник без @
     const DA_LINK = 'https://donationalerts.com/r/YOUR_LINK'; // Твоя ссылка на оплату
     const FREE_TIME = 30;
@@ -140,11 +142,51 @@
         startTimer(FREE_TIME);
     }
 
-    function startVideo() {
+    async function startVideo() {
         const v = document.getElementById('streamVideo');
-        v.src = VIDEO_URL;
-        v.style.display = 'block';
-        v.play().catch(e => console.log("Autoplay blocked", e));
+        const errorMsg = document.getElementById('errorMsg');
+        
+        console.log('Fetching direct video link from Streamable...');
+        errorMsg.innerText = '⏳ Loading video...';
+        errorMsg.style.display = 'block';
+
+        try {
+            // Автоматически получаем прямую ссылку на MP4 со страницы Streamable
+            const response = await fetch(STREAMABLE_URL);
+            const html = await response.text();
+            
+            // Ищем прямую ссылку на mp4 в исходном коде страницы
+            const match = html.match(/https:\/\/cdn[^"]+\.mp4[^"]*/i);
+            
+            if (match && match[0]) {
+                const directUrl = match[0].replace(/&amp;/g, '&');
+                console.log('Direct video URL found:', directUrl);
+                
+                v.src = directUrl;
+                v.style.display = 'block';
+                
+                v.oncanplay = () => {
+                    console.log('Video loaded successfully!');
+                    errorMsg.style.display = 'none';
+                    v.play().catch(e => {
+                        console.error('Autoplay blocked:', e);
+                        errorMsg.innerText = '⚠️ Click on video to enable playback';
+                        errorMsg.style.display = 'block';
+                    });
+                };
+                
+                v.onerror = () => {
+                    throw new Error('Video element failed to play');
+                };
+            } else {
+                throw new Error('Could not find MP4 link in Streamable page');
+            }
+        } catch (err) {
+            console.error('Error loading video:', err);
+            errorMsg.innerText = '❌ Failed to load video. Check console (F12).';
+            errorMsg.style.display = 'block';
+        }
+        
         document.getElementById('badges').style.opacity = '1';
     }
 
