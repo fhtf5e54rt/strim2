@@ -53,6 +53,7 @@
 </head>
 <body>
     <div class="video-wrapper">
+        <!-- ТВОЯ ССЫЛКА НА BUNNY.NET УЖЕ ВСТАВЛЕНА -->
         <video id="streamVideo" playsinline loop muted crossorigin="anonymous"></video>
         
         <div class="overlay-screen" id="startScreen">
@@ -95,7 +96,7 @@
 
 <script>
     // ⚠️ НАСТРОЙКИ - ЗАМЕНИ ТОЛЬКО ЭТИ 2 СТРОКИ
-    const STREAMABLE_URL = 'https://streamable.com/87u3uk?t=40';
+    const VIDEO_URL = 'https://myprivatestream.b-cdn.net/video.mp4_compross.mp4';
     const TG_USERNAME = 'YOUR_TG_USERNAME'; // Твой ник без @
     const DA_LINK = 'https://donationalerts.com/r/YOUR_LINK'; // Твоя ссылка на оплату
     const FREE_TIME = 30;
@@ -142,50 +143,32 @@
         startTimer(FREE_TIME);
     }
 
-    async function startVideo() {
+    function startVideo() {
         const v = document.getElementById('streamVideo');
         const errorMsg = document.getElementById('errorMsg');
         
-        console.log('Fetching direct video link from Streamable...');
+        console.log('Loading video from Bunny.net...');
         errorMsg.innerText = '⏳ Loading video...';
         errorMsg.style.display = 'block';
 
-        try {
-            // Автоматически получаем прямую ссылку на MP4 со страницы Streamable
-            const response = await fetch(STREAMABLE_URL);
-            const html = await response.text();
-            
-            // Ищем прямую ссылку на mp4 в исходном коде страницы
-            const match = html.match(/https:\/\/cdn[^"]+\.mp4[^"]*/i);
-            
-            if (match && match[0]) {
-                const directUrl = match[0].replace(/&amp;/g, '&');
-                console.log('Direct video URL found:', directUrl);
-                
-                v.src = directUrl;
-                v.style.display = 'block';
-                
-                v.oncanplay = () => {
-                    console.log('Video loaded successfully!');
-                    errorMsg.style.display = 'none';
-                    v.play().catch(e => {
-                        console.error('Autoplay blocked:', e);
-                        errorMsg.innerText = '⚠️ Click on video to enable playback';
-                        errorMsg.style.display = 'block';
-                    });
-                };
-                
-                v.onerror = () => {
-                    throw new Error('Video element failed to play');
-                };
-            } else {
-                throw new Error('Could not find MP4 link in Streamable page');
-            }
-        } catch (err) {
-            console.error('Error loading video:', err);
-            errorMsg.innerText = '❌ Failed to load video. Check console (F12).';
+        v.src = VIDEO_URL;
+        v.style.display = 'block';
+        
+        v.oncanplay = () => {
+            console.log('Video loaded successfully!');
+            errorMsg.style.display = 'none';
+            v.play().catch(e => {
+                console.error('Autoplay blocked:', e);
+                errorMsg.innerText = '⚠️ Click video to play';
+                errorMsg.style.display = 'block';
+            });
+        };
+        
+        v.onerror = (e) => {
+            console.error('Video load error:', e);
+            errorMsg.innerText = '❌ Video failed. Check link in code.';
             errorMsg.style.display = 'block';
-        }
+        };
         
         document.getElementById('badges').style.opacity = '1';
     }
